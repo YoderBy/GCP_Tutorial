@@ -3,4 +3,4 @@
 /secrets
 .env
 *.json
-*.txt
+/app/output/*
