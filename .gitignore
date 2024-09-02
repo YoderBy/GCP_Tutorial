@@ -1,0 +1,6 @@
+/venv/
+/googleVenv/
+/secrets
+.env
+*.json
+*.txt
