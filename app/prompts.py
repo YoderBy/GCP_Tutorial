@@ -1,8 +1,8 @@
 user_prompt = """
     You are a document hebrew test composer. Given a document, your task is to extract the perfect test, in the following format:
     {
-    "Test Name": "" [The document name],
-    "Test Questions": [
+    "name": "" [The document name],
+    "questions": [
         {
             "question": "",
             "options": [
@@ -15,7 +15,22 @@ user_prompt = """
         ]
     }
 
-    - The JSON schema must be followed during the extraction.
+    - The JSON schema must be followed during the extraction. DO NOT USE " " to highlight text inside the JSON.
+        e.g for a bad schema:
+        {
+        "question": "מהם "תאי מיקרוגליה" ומה תפקידם במערכת העצבים המרכזית?",
+        "options": [
+            "תאי מיקרוגליה אחראים על ייצור מיאלין",
+            "תאי מיקרוגליה אחראים על הולכת אותות חשמליים",
+            "תאי מיקרוגליה אחראים על תגובה חיסונית במוח",
+            "תאי מיקרוגליה אחראים על הזנת נוירונים"
+        ],
+        "correct_answer": 2,
+        "explanation": "תאי מיקרוגליה הם תאים השייכים למערכת החיסון, ותפקידם להגן על מערכת העצבים המרכזית מפני זיהומים ופגיעות. הם פועלים כ"תאי הזבל" של המוח, ובולעים פסולת, תאים מתים ופתוגנים. בנוסף, תאי מיקרוגליה מעורבים בתהליכי דלקת, תיקון רקמות וויסות פעילות נוירונים.",
+        "page_number": "4"
+    },
+        This is a bad schema because it uses " " to mark text inside the JSON, once to highlight the term תאי מיקרוגליה and second to mark "תאי זבל". THIS WILL NOT RENDER PROPERLY IN THE JSON.
+        
     - The values must only include text strings found in the document.
     - The correct answer must be an index of the options array.
     - Questions must be in Hebrew
@@ -173,6 +188,21 @@ Follow these guidelines:
 3. Provide clear, concise explanations for correct answers, referencing specific page numbers.
 4. Adhere strictly to the specified JSON format for test output.
 5. Pay attention to Hebrew language nuances.
+6. The JSON schema must be followed during the extraction. DO NOT USE " " to highlight text inside the JSON.
+        e.g for a bad schema:
+        {
+        "question": "מהם "תאי מיקרוגליה" ומה תפקידם במערכת העצבים המרכזית?",
+        "options": [
+            "תאי מיקרוגליה אחראים על ייצור מיאלין",
+            "תאי מיקרוגליה אחראים על הולכת אותות חשמליים",
+            "תאי מיקרוגליה אחראים על תגובה חיסונית במוח",
+            "תאי מיקרוגליה אחראים על הזנת נוירונים"
+        ],
+        "correct_answer": 2,
+        "explanation": "תאי מיקרוגליה הם תאים השייכים למערכת החיסון, ותפקידם להגן על מערכת העצבים המרכזית מפני זיהומים ופגיעות. הם פועלים כ"תאי הזבל" של המוח, ובולעים פסולת, תאים מתים ופתוגנים. בנוסף, תאי מיקרוגליה מעורבים בתהליכי דלקת, תיקון רקמות וויסות פעילות נוירונים.",
+        "page_number": "4"
+    },
+        This is a bad schema because it uses " " to mark text inside the JSON, once to highlight the term תאי מיקרוגליה and second to mark "תאי זבל". THIS WILL NOT RENDER PROPERLY IN THE JSON.
 
 Your goal is to produce a high-quality test that faithfully represents the document's content and effectively evaluates student comprehension.
 
