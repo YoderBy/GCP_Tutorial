@@ -15,7 +15,15 @@ from prompts import system_instructions, user_prompt
 load_dotenv()
 credentials = service_account.Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 
-
+START_PAGE_MAPPING = {
+    1: 0,
+    2: 15,
+    3: 26,
+    4: 51,
+    5: 83,
+    6: 97,
+    7: 113
+}
 
 REQUEST_LIMIT = 4
 request_semaphore = asyncio.Semaphore(REQUEST_LIMIT)
@@ -54,32 +62,53 @@ async def generate(
         print("Generating test...")
         user_message = user_prompt
         if existing_content:
-            user_message += f"\n\nThose are the existing questions, do not repeat questions from it:\n{existing_content}"
+            user_message += f"\n\nThose are the existing questions, do not repeat questions from it:\n{existing_content}. REMEMBER, DO NOT REPEAT QUESTIONS FROM THE EXAMPLES!"
         
-        response = await asyncio.to_thread(
-            model.generate_content,
-            [document, user_message],
-            generation_config=generation_config,
-        )
-        print(f"Test generated successfully for {document_name[::-1]}")
-        await asyncio.sleep(15)  # 15 seconds delay to ensure we don't exceed 4 requests per minute
-
-        return response.text
-
-    
+        max_retries = 3
+        initial_temperature = generation_config["temperature"]
+        
+        for attempt in range(max_retries):
+            try:
+                response = await asyncio.to_thread(
+                    model.generate_content,
+                    [document, user_message],
+                    generation_config=generation_config,
+                )
+                test_content = response.text
+                
+                # Check if the response is valid JSON
+                if test_content.startswith("```json"):
+                    test_content = test_content[8:-3]
+                json.loads(test_content)  # This will raise JSONDecodeError if not valid JSON
+                
+                print(f"Test generated successfully for {document_name[::-1]}")
+                await asyncio.sleep(15)  # 15 seconds delay to ensure we don't exceed 4 requests per minute
+                return test_content
+            
+            except json.JSONDecodeError:
+                if attempt < max_retries - 1:
+                    generation_config["temperature"] = min(initial_temperature + 0.1 * (attempt + 1), 1.0)
+                    print(f"Retry {attempt + 1} with temperature {generation_config['temperature']}")
+                else:
+                    print(f"Failed to generate valid JSON after {max_retries} attempts")
+                    return test_content  # Return the last generated content even if it's not valid JSON
+        
+        # Reset temperature for future calls
+        generation_config["temperature"] = initial_temperature
+        return test_content
 
 #######################
 # Configuration and Helpers
 #######################
 generation_config = {
     "max_output_tokens": 8192,
-    "temperature": 0.3,
-    "top_p": 0.95,
+    "temperature": 0.5,
+    "top_p": 0.9,
 }
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(current_dir, "output")
-INPUT_DIR = os.path.join(current_dir, "test")
+INPUT_DIR = os.path.join(current_dir, "files")
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 if not os.path.exists(INPUT_DIR):
@@ -112,7 +141,10 @@ async def save_test(
         test_json = json.loads(test)
         
         async with aiofiles.open(output_path, "w", encoding="utf-8") as f:
+            test_json["name"] = lecture_number + "_" + test_json["name"]
+            test_json["start_page"] = START_PAGE_MAPPING[int(lecture_number)]
             await f.write(json.dumps(test_json, indent=4, ensure_ascii=False))
+            
         print(f"Test saved to {output_path}")
     
     except json.JSONDecodeError as e:
@@ -128,7 +160,6 @@ async def save_test(
         async with aiofiles.open(output_path, "w", encoding="utf-8") as f:
             await f.write(test)
         print(f"Error saving test to {output_path}, saving test as txt file")
-
 
 async def get_existing_content(document_name):
     document_dir = os.path.join(OUTPUT_DIR, document_name)
